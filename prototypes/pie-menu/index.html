@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>径向转盘菜单 · 交互原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ring:#161a20;
+  --ring-line:rgba(255,255,255,.07);
+  --txt:#eef2f7;
+  --dim:rgba(238,242,247,.55);
+  --faint:rgba(238,242,247,.32);
+  --font:'Outfit','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--font);color:var(--txt);overflow:hidden;
+  background:#0a0c10;
+  -webkit-font-smoothing:antialiased;
+}
+body.menu-open{cursor:crosshair;user-select:none}
+body.menu-open .hint{opacity:0;transform:translate(-50%,12px)}
+
+/* ── 背景（模糊照片 + 暗化） ─────────── */
+.bg{
+  position:fixed;inset:-48px;z-index:0;
+  background:url('bg_1.jpg') center/cover no-repeat,#0a0c10;
+  filter:blur(12px) brightness(.52) saturate(.9);
+  transform:scale(1.02);
+  transition:filter .25s ease;
+}
+body.menu-open .bg{filter:blur(18px) brightness(.34) saturate(.85)}
+.vignette{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 46%,transparent 34%,rgba(4,6,10,.55) 100%);
+}
+
+/* ── 转盘菜单 ───────────────────────── */
+.radial{
+  position:fixed;z-index:50;width:440px;height:440px;left:0;top:0;
+  pointer-events:none;opacity:0;transform:scale(.55);
+  transition:opacity .15s ease,transform .26s cubic-bezier(.2,1.2,.3,1.1);
+  will-change:transform,opacity;
+}
+body.menu-open .radial{opacity:1;transform:scale(1)}
+.radial svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;user-select:none}
+
+.boundary{fill:none;stroke:var(--ring-line);stroke-width:1}
+.wedge{
+  transform-box:view-box;transform-origin:50% 50%;
+  transition:transform .18s cubic-bezier(.3,1.35,.5,1);
+}
+.wedge .sector{
+  fill:rgba(22,26,32,.96);
+  stroke:rgba(0,0,0,.55);stroke-width:1;
+  transition:fill .13s ease,stroke .13s ease;
+}
+.wedge .accent{fill:none;stroke-width:2.5;stroke-linecap:round;opacity:0;transition:opacity .13s}
+.wedge .ig{transform-box:fill-box;transform-origin:center;transition:transform .16s cubic-bezier(.3,1.4,.5,1)}
+.wedge.on{transform:translate(var(--tx),var(--ty)) scale(1.045)}
+.wedge.on .sector{
+  fill:color-mix(in srgb,var(--c) 17%,rgba(22,26,32,.96));
+  stroke:var(--c);
+  filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c) 45%,transparent));
+}
+.wedge.on .accent{opacity:1;filter:drop-shadow(0 0 6px var(--c))}
+.wedge.on .ig{transform:scale(1.16)}
+body.menu-open .wedge{animation:wedgeIn .3s both;animation-delay:calc(40ms + var(--i)*22ms)}
+@keyframes wedgeIn{from{opacity:0}to{opacity:1}}
+
+/* ── 中心圆盘 ───────────────────────── */
+.center{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:172px;height:172px;border-radius:50%;
+  background:rgba(14,17,22,.97);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 18px 50px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.02);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+}
+.cico{
+  width:54px;height:54px;border-radius:50%;background:var(--c,#2a313b);
+  display:grid;place-items:center;flex-shrink:0;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--c,#000) 40%,transparent);
+  transition:background .15s;
+}
+.cico svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cico svg .dot{fill:#fff;stroke:none}
+.clabel{font-size:16.5px;font-weight:600;letter-spacing:.5px}
+.clabel.idle{color:var(--faint);font-weight:500;font-size:13.5px}
+.chints{display:flex;gap:14px;font-size:11.5px;color:var(--faint);font-weight:500}
+.chints b{color:var(--dim);font-weight:600}
+.chints .ok{color:color-mix(in srgb,var(--c,#fff) 75%,#fff)}
+.center .pulse{position:absolute;inset:-9px;border-radius:50%;border:1px solid rgba(255,255,255,.22);opacity:0;pointer-events:none}
+body.menu-open .center .pulse{animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.9);opacity:.75}70%{transform:scale(1.22);opacity:0}100%{opacity:0}}
+
+/* ── 应用涟漪 ───────────────────────── */
+.ripple{
+  position:fixed;z-index:49;border-radius:50%;pointer-events:none;
+  border:2.5px solid var(--c,#fff);
+  animation:rip .55s cubic-bezier(.2,.7,.4,1) forwards;
+}
+@keyframes rip{from{opacity:.85;transform:scale(.28)}to{opacity:0;transform:scale(1.25)}}
+
+/* ── 提示 & Toast ───────────────────── */
+.hint{
+  position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:30;
+  display:flex;align-items:center;gap:9px;padding:11px 20px;border-radius:99px;
+  background:rgba(13,16,21,.82);border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(12px);
+  font-size:12.5px;color:var(--dim);white-space:nowrap;
+  box-shadow:0 12px 40px rgba(0,0,0,.45);
+  transition:opacity .25s,transform .25s;
+  animation:hintIn .6s .4s both;
+}
+@keyframes hintIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.hint kbd{
+  font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--txt);
+  padding:2.5px 8px;border-radius:7px;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);
+  border-bottom-width:2.5px;
+}
+.hint .sep{width:3px;height:3px;border-radius:50%;background:var(--faint);margin:0 3px}
+.hint .dot{width:7px;height:7px;border-radius:50%;background:#a3e635;box-shadow:0 0 10px #a3e635;animation:blink 1.8s infinite}
+@keyframes blink{50%{opacity:.35}}
+
+.toast{
+  position:fixed;left:50%;bottom:34px;transform:translate(-50%,18px);z-index:60;
+  display:flex;align-items:center;gap:10px;padding:12px 22px;border-radius:14px;
+  background:rgba(13,16,21,.92);border:1px solid rgba(255,255,255,.16);
+  backdrop-filter:blur(14px);
+  font-size:13.5px;font-weight:500;
+  box-shadow:0 16px 50px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .25s cubic-bezier(.3,1.3,.5,1);
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast .ck{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;background:rgba(255,255,255,.1);color:var(--dim)}
+.toast.applied{border-color:color-mix(in srgb,var(--c,#fff) 55%,transparent)}
+.toast.applied .ck{background:var(--c,#fff);color:#0a0c10}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important}
+}
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="vignette"></div>
+
+<div class="hint">
+  <span class="dot"></span>
+  按住 <kbd>Space</kbd> + <kbd>鼠标左键</kbd><span class="sep"></span>拖向扇区松手应用<span class="sep"></span>松在中心返回
+</div>
+
+<div class="radial" id="radial">
+  <svg id="rsvg" viewBox="0 0 440 440"></svg>
+  <div class="center">
+    <div class="pulse"></div>
+    <div class="cico" id="cIcon"></div>
+    <div class="clabel" id="cLabel">拖拽以选择</div>
+    <div class="chints"><span class="ok">✓ <b>应用</b></span><span>✕ <b>返回</b></span></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="ck" id="toastCk">✓</span><span id="toastMsg"></span></div>
+
+<script>
+/* ================= 径向转盘菜单（独立原型） ================= */
+const ICONS = {
+  create : '<path d="M12 5v14M5 12h14"/>',
+  edit   : '<path d="M16.6 3.6a2.1 2.1 0 0 1 3 3L7.2 19 3 20l1-4.2L16.6 3.6z"/>',
+  search : '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-3.8-3.8"/>',
+  share  : '<path d="M4.5 12.5v6a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-6"/><path d="M12 14.5V4M7.8 8.2L12 4l4.2 4.2"/>',
+  star   : '<path d="M12 3.6l2.5 5.1 5.7.9-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.9z"/>',
+  trash  : '<path d="M4 7h16M9.5 7V5.5a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5V7"/><path d="M6.5 7l1 12.5h9l1-12.5"/><path d="M10 11v5M14 11v5"/>',
+  config : '<path d="M4 7h16M4 12h16M4 17h16"/><circle class="dot" cx="9.5" cy="7" r="2.1"/><circle class="dot" cx="15" cy="12" r="2.1"/><circle class="dot" cx="7.5" cy="17" r="2.1"/>',
+  home   : '<path d="M4 11l8-7 8 7"/><path d="M6 9.8V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9.8"/><path d="M10 21v-6h4v6"/>'
+};
+const ITEMS = [
+  {key:'create', label:'新建', color:'#3b82f6'},
+  {key:'edit',   label:'编辑', color:'#a3e635'},
+  {key:'search', label:'搜索', color:'#22d3ee'},
+  {key:'share',  label:'分享', color:'#14b8a6'},
+  {key:'star',   label:'收藏', color:'#22c55e'},
+  {key:'trash',  label:'删除', color:'#ef4444'},
+  {key:'config', label:'设置', color:'#e5e7eb'},
+  {key:'home',   label:'主页', color:'#a855f7'}
+];
+const N = ITEMS.length, STEP = 360 / N;
+const C = 220, R_OUT = 200, R_IN = 96, DEAD = 84, GAP = 1.3, EXTRACT = 15;
+const BOX = 440;
+
+const rad = d => d * Math.PI / 180;
+const pt = (r, deg) => [C + r * Math.cos(rad(deg)), C + r * Math.sin(rad(deg))];
+
+function sectorPath(r1, r2, a1, a2) {
+  const [x1,y1]=pt(r2,a1),[x2,y2]=pt(r2,a2),[x3,y3]=pt(r1,a2),[x4,y4]=pt(r1,a1);
+  return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r2} ${r2} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L${x3.toFixed(2)} ${y3.toFixed(2)} A${r1} ${r1} 0 0 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z`;
+}
+function arcPath(r, a1, a2) {
+  const [x1,y1]=pt(r,a1),[x2,y2]=pt(r,a2);
+  return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+}
+
+/* 构建 SVG：分瓣圆环 + 彩色圆形图标 */
+(function build() {
+  const svg = document.getElementById('rsvg');
+  let m = `<circle class="boundary" cx="${C}" cy="${C}" r="${R_OUT + 1}"/>`;
+  ITEMS.forEach((it, i) => {
+    const c = -90 + i * STEP;                       // 扇区中心角
+    const a1 = c - STEP/2 + GAP, a2 = c + STEP/2 - GAP;
+    const [tx, ty] = [EXTRACT * Math.cos(rad(c)), EXTRACT * Math.sin(rad(c))];
+    const [ix, iy] = pt(148, c);
+    m += `<g class="wedge" data-i="${i}" style="--i:${i};--c:${it.color};--tx:${tx.toFixed(2)}px;--ty:${ty.toFixed(2)}px">`
+       + `<path class="sector" d="${sectorPath(R_IN, R_OUT, a1, a2)}"/>`
+       + `<path class="accent" stroke="${it.color}" d="${arcPath(R_OUT - 3, a1 + 1.6, a2 - 1.6)}"/>`
+       + `<g class="ig">`
+       + `<circle cx="${ix.toFixed(1)}" cy="${iy.toFixed(1)}" r="27" fill="${it.color}" stroke="rgba(0,0,0,.35)" stroke-width="1"/>`
+       + `<g transform="translate(${(ix-12).toFixed(1)} ${(iy-12).toFixed(1)}) scale(1)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[it.key]}</g>`
+       + `</g></g>`;
+  });
+  m += `<circle class="boundary" cx="${C}" cy="${C}" r="${R_IN - 1}"/>`;
+  svg.innerHTML = m;
+})();
+
+/* 交互状态 */
+const radial = document.getElementById('radial');
+const cIcon = document.getElementById('cIcon'), cLabel = document.getElementById('cLabel');
+const toast = document.getElementById('toast'), toastMsg = document.getElementById('toastMsg'), toastCk = document.getElementById('toastCk');
+let open = false, spaceHeld = false, anchor = {x:0, y:0}, activeIdx = -1;
+let lastEvt = null, raf = false, toastTimer = null;
+
+const isEditable = t => t.closest && t.closest('input,textarea,select,[contenteditable]');
+const iconHTML = it => `<svg viewBox="0 0 24 24">${ICONS[it.key]}</svg>`;
+
+function setCenterIdle() {
+  cIcon.style.setProperty('--c', '#2a313b');
+  cIcon.innerHTML = '<svg viewBox="0 0 24 24" style="stroke:#8b93a1"><circle cx="12" cy="12" r="5.6"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/><circle class="dot" cx="12" cy="12" r="1.4" fill="#8b93a1" stroke="none"/></svg>';
+  cLabel.textContent = '拖拽以选择';
+  cLabel.classList.add('idle');
+}
+function setActive(i) {
+  if (i === activeIdx) return;
+  document.querySelectorAll('.wedge.on').forEach(el => el.classList.remove('on'));
+  if (i >= 0) {
+    document.querySelector(`.wedge[data-i="${i}"]`)?.classList.add('on');
+    const it = ITEMS[i];
+    cIcon.style.setProperty('--c', it.color);
+    cIcon.innerHTML = iconHTML(it);
+    cLabel.textContent = it.label;
+    cLabel.classList.remove('idle');
+  } else setCenterIdle();
+  activeIdx = i;
+}
+function updateActive() {
+  if (!open || !lastEvt) return;
+  const dx = lastEvt.clientX - anchor.x, dy = lastEvt.clientY - anchor.y;
+  if (Math.hypot(dx, dy) < DEAD) { setActive(-1); return; }
+  const rel = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+  setActive(Math.round(rel / STEP) % N);
+}
+function ripple(color) {
+  const r = document.createElement('div');
+  r.className = 'ripple';
+  r.style.setProperty('--c', color);
+  r.style.left = (anchor.x - BOX/2) + 'px';
+  r.style.top  = (anchor.y - BOX/2) + 'px';
+  r.style.width = r.style.height = BOX + 'px';
+  document.body.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+}
+function openMenu(x, y) {
+  anchor.x = x; anchor.y = y;
+  radial.style.left = (anchor.x - BOX/2) + 'px';
+  radial.style.top  = (anchor.y - BOX/2) + 'px';
+  open = true; lastEvt = null; setActive(-1);
+  document.body.classList.add('menu-open');
+}
+function closeMenu(action) {
+  if (!open) return;
+  const idx = activeIdx, it = idx >= 0 ? ITEMS[idx] : null;
+  open = false; lastEvt = null; setActive(-1);
+  document.body.classList.remove('menu-open');
+  if (action && it) { ripple(it.color); showToast(`已应用：${it.label}`, it.color); }
+  else showToast('已返回 · 未做选择', null);
+}
+function showToast(msg, color) {
+  toastMsg.textContent = msg;
+  toastCk.textContent = color ? '✓' : '✕';
+  toast.classList.toggle('applied', !!color);
+  if (color) toast.style.setProperty('--c', color);
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1900);
+}
+
+/* 事件绑定 */
+window.addEventListener('keydown', e => {
+  if (isEditable(e.target)) return;
+  if (e.code === 'Space') { spaceHeld = true; e.preventDefault(); }
+  if (e.code === 'Escape' && open) closeMenu(false);
+});
+window.addEventListener('keyup', e => { if (e.code === 'Space') spaceHeld = false; });
+window.addEventListener('blur', () => { spaceHeld = false; if (open) closeMenu(false); });
+
+window.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || !spaceHeld || isEditable(e.target)) return;
+  e.preventDefault();
+  openMenu(e.clientX, e.clientY);
+});
+window.addEventListener('pointermove', e => {
+  if (!open) return;
+  lastEvt = e;
+  if (!raf) { raf = true; requestAnimationFrame(() => { raf = false; updateActive(); }); }
+});
+window.addEventListener('pointerup', e => {
+  if (!open) return;
+  lastEvt = e; updateActive();
+  const d = Math.hypot(e.clientX - anchor.x, e.clientY - anchor.y);
+  closeMenu(d >= DEAD);
+});
+window.addEventListener('pointercancel', () => closeMenu(false));
+
+setCenterIdle();
+</script>
+</body>
+</html>
