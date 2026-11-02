@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的博客后台 · 径向玻璃导航原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e14;
+  --panel:rgba(255,255,255,.045);
+  --panel-hi:rgba(255,255,255,.08);
+  --line:rgba(255,255,255,.09);
+  --txt:#e9eef5;
+  --dim:rgba(233,238,245,.52);
+  --faint:rgba(233,238,245,.34);
+  --mint:#34d399;
+  --mint-soft:rgba(52,211,153,.15);
+  --amber:#fbbf24;
+  --sky:#7dd3fc;
+  --rose:#fb7185;
+  --font:'Outfit','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--txt);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body.menu-open{cursor:crosshair;user-select:none}
+body.menu-open .hint{opacity:0;transform:translate(-50%,12px)}
+
+/* ── 氛围背景 ───────────────────────── */
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(100px)}
+.o1{width:560px;height:560px;background:rgba(45,212,191,.15);top:-180px;left:-140px;animation:drift 22s ease-in-out infinite alternate}
+.o2{width:680px;height:680px;background:rgba(99,102,241,.13);bottom:-260px;right:-180px;animation:drift 26s ease-in-out infinite alternate-reverse}
+.o3{width:380px;height:380px;background:rgba(251,113,133,.07);top:40%;left:55%;animation:drift 19s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(60px,40px) scale(1.12)}}
+.gridlines{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:30px 30px;
+  mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 78%);
+}
+
+/* ── 后台骨架（演示用） ─────────────── */
+.layout{position:relative;z-index:1;display:flex;min-height:100vh}
+.sidebar{
+  width:236px;flex-shrink:0;padding:22px 16px;display:flex;flex-direction:column;gap:4px;
+  background:rgba(13,18,26,.72);backdrop-filter:blur(16px);
+  border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;
+}
+.logo{display:flex;align-items:center;gap:11px;padding:6px 10px 20px}
+.logo-mark{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(135deg,rgba(52,211,153,.25),rgba(125,211,252,.18));
+  border:1px solid rgba(52,211,153,.35);
+  font-weight:800;font-size:15px;color:var(--mint);
+}
+.logo b{font-size:15px;font-weight:700;letter-spacing:.3px}
+.logo span{display:block;font-size:11px;color:var(--faint);font-weight:500;letter-spacing:1.5px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;
+  font-size:13.5px;font-weight:500;color:var(--dim);cursor:pointer;
+  transition:background .15s,color .15s;position:relative;
+}
+.nav-item svg{width:17px;height:17px;flex-shrink:0}
+.nav-item:hover{background:var(--panel);color:var(--txt)}
+.nav-item.on{background:var(--mint-soft);color:var(--mint);font-weight:600}
+.nav-item.on::before{content:'';position:absolute;left:-16px;top:22%;height:56%;width:3px;border-radius:0 3px 3px 0;background:var(--mint)}
+.nav-item.flash{animation:flash 1.2s ease}
+@keyframes flash{0%,60%{background:rgba(52,211,153,.28);color:#a7f3d0}100%{}}
+.badge{margin-left:auto;font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;background:rgba(251,113,133,.18);color:var(--rose)}
+.side-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 10px;border-top:1px solid var(--line)}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#34d399,#7dd3fc);display:grid;place-items:center;font-size:12px;font-weight:700;color:#06281c}
+.side-foot div b{font-size:12.5px;display:block}
+.side-foot div span{font-size:11px;color:var(--faint)}
+
+.main{flex:1;padding:26px 34px 40px;max-width:1180px}
+.topbar{display:flex;align-items:center;gap:18px;margin-bottom:26px}
+.crumb{font-size:13px;color:var(--faint)}
+.crumb b{color:var(--txt);font-weight:600}
+.search{
+  margin-left:auto;display:flex;align-items:center;gap:9px;width:250px;
+  padding:9px 14px;border-radius:11px;background:var(--panel);border:1px solid var(--line);
+  color:var(--faint);font-size:13px;
+}
+.search input{background:none;border:none;outline:none;color:var(--txt);font-family:var(--font);font-size:13px;width:100%}
+.search input::placeholder{color:var(--faint)}
+.bell{position:relative;width:36px;height:36px;border-radius:10px;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center;color:var(--dim)}
+.bell i{position:absolute;top:8px;right:9px;width:6px;height:6px;border-radius:50%;background:var(--rose)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.stat{
+  padding:18px 20px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  border:1px solid var(--line);backdrop-filter:blur(10px);
+}
+.stat span{font-size:12px;color:var(--faint);font-weight:500;letter-spacing:.4px}
+.stat .val{font-size:29px;font-weight:700;letter-spacing:-.5px;margin-top:7px;font-variant-numeric:tabular-nums}
+.stat .delta{font-size:11.5px;font-weight:600;margin-top:5px;color:var(--mint)}
+.stat .delta.down{color:var(--rose)}
+.stat.hot{border-color:rgba(251,113,133,.3)}
+.stat.hot .val{color:var(--rose)}
+
+.grid2{display:grid;grid-template-columns:1.7fr 1fr;gap:16px}
+.card{
+  padding:20px 22px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.018));
+  border:1px solid var(--line);backdrop-filter:blur(10px);
+}
+.card h3{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card h3 em{font-style:normal;margin-left:auto;font-size:11.5px;color:var(--faint);font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--faint);font-weight:500;font-size:11.5px;padding:0 8px 10px;letter-spacing:.5px}
+td{padding:11px 8px;border-top:1px solid rgba(255,255,255,.055)}
+tr:hover td{background:rgba(255,255,255,.025)}
+td.t{font-weight:500}
+td.muted{color:var(--faint);font-size:12px}
+.pill{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px}
+.pill.pub{background:rgba(52,211,153,.14);color:var(--mint)}
+.pill.draft{background:rgba(251,191,36,.14);color:var(--amber)}
+.todo{display:flex;align-items:center;gap:12px;padding:11px 4px;border-top:1px solid rgba(255,255,255,.055);font-size:13px}
+.todo:first-of-type{border-top:none}
+.todo .ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.todo b{font-weight:600;display:block;font-size:12.5px}
+.todo span{font-size:11.5px;color:var(--faint)}
+.todo .n{margin-left:auto;font-weight:700;font-size:15px}
+
+/* ── 底部提示 ───────────────────────── */
+.hint{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:30;
+  display:flex;align-items:center;gap:9px;padding:11px 20px;border-radius:99px;
+  background:rgba(16,22,32,.82);border:1px solid var(--line);backdrop-filter:blur(14px);
+  font-size:12.5px;color:var(--dim);white-space:nowrap;
+  box-shadow:0 12px 40px rgba(0,0,0,.45);
+  transition:opacity .25s,transform .25s;
+  animation:hintIn .6s .4s both;
+}
+@keyframes hintIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.hint kbd{
+  font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--txt);
+  padding:2.5px 8px;border-radius:7px;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);
+  border-bottom-width:2.5px;
+}
+.hint .sep{width:3px;height:3px;border-radius:50%;background:var(--faint);margin:0 3px}
+.hint .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint);animation:blink 1.8s infinite}
+@keyframes blink{50%{opacity:.35}}
+
+/* ── 全页玻璃遮罩 ───────────────────── */
+.overlay{
+  position:fixed;inset:0;z-index:40;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(ellipse at 50% 42%,transparent 30%,rgba(6,9,14,.5) 100%),
+    linear-gradient(rgba(10,14,20,.28),rgba(10,14,20,.44));
+  backdrop-filter:blur(0px) brightness(1);
+  transition:opacity .18s ease;
+}
+body.menu-open .overlay{
+  opacity:1;
+  backdrop-filter:blur(15px) saturate(1.35) brightness(.72);
+}
+
+/* ── 径向玻璃菜单 ───────────────────── */
+.radial{
+  position:fixed;z-index:50;width:440px;height:440px;
+  left:0;top:0;pointer-events:none;
+  opacity:0;transform:scale(.5);
+  transition:opacity .16s ease,transform .24s cubic-bezier(.2,1.1,.3,1.15);
+  will-change:transform,opacity;
+}
+body.menu-open .radial{opacity:1;transform:scale(1)}
+.ring{
+  position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.11),rgba(255,255,255,.025) 46%,rgba(12,17,26,.30) 100%);
+  border:1px solid rgba(255,255,255,.15);
+  backdrop-filter:blur(24px) saturate(1.5);
+  box-shadow:0 34px 90px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.04),inset 0 0 60px rgba(52,211,153,.05);
+}
+.radial svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;user-select:none}
+.sector{fill:rgba(255,255,255,.035);transition:fill .13s ease}
+.sector.on{fill:rgba(52,211,153,.15)}
+.ray{stroke:rgba(255,255,255,.15);stroke-width:1}
+.arc{fill:none;stroke:var(--mint);stroke-width:2.5;stroke-linecap:round;opacity:0;transition:opacity .13s;filter:drop-shadow(0 0 7px rgba(52,211,153,.85))}
+.arc.on{opacity:1}
+.item{color:rgba(255,255,255,.58);transition:color .13s ease}
+.item.on{color:#b9fbe3}
+.item .ic{transform-box:fill-box;transform-origin:center;transition:transform .16s cubic-bezier(.3,1.4,.5,1)}
+.item.on .ic{transform:scale(1.14)}
+.item text{fill:currentColor;text-anchor:middle;font-family:var(--font);font-weight:600;letter-spacing:.6px}
+.item .lbl{font-size:15.5px}
+body.menu-open .item{animation:itemIn .32s both;animation-delay:calc(50ms + var(--i)*24ms)}
+@keyframes itemIn{from{opacity:0}to{opacity:1}}
+.hub{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:62px;height:62px;border-radius:50%;
+  background:rgba(18,26,38,.78);border:1px solid rgba(255,255,255,.2);
+  backdrop-filter:blur(12px);
+  display:grid;place-items:center;color:var(--mint);
+  box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 24px rgba(52,211,153,.12);
+}
+.hub svg{width:24px;height:24px}
+.hub::after{
+  content:'';position:absolute;inset:-9px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.28);opacity:0;
+}
+body.menu-open .hub::after{animation:pulse 1.7s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.82);opacity:.8}70%{transform:scale(1.3);opacity:0}100%{opacity:0}}
+
+/* ── Toast ──────────────────────────── */
+.toast{
+  position:fixed;left:50%;bottom:34px;transform:translate(-50%,18px);z-index:60;
+  display:flex;align-items:center;gap:10px;padding:12px 22px;border-radius:14px;
+  background:rgba(14,20,29,.9);border:1px solid rgba(52,211,153,.35);
+  backdrop-filter:blur(16px);
+  font-size:13.5px;font-weight:500;
+  box-shadow:0 16px 50px rgba(0,0,0,.5),0 0 30px rgba(52,211,153,.1);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .25s cubic-bezier(.3,1.3,.5,1);
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast .ck{width:20px;height:20px;border-radius:50%;background:var(--mint-soft);color:var(--mint);display:grid;place-items:center;font-size:11px;font-weight:800}
+.toast.cancel{border-color:rgba(255,255,255,.18)}
+.toast.cancel .ck{background:rgba(255,255,255,.08);color:var(--dim)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important}
+}
+@media (max-width:1100px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .grid2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="aurora"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+<div class="gridlines"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">博</div>
+      <div><b>我的博客</b><span>ADMIN CONSOLE</span></div>
+    </div>
+    <div class="nav-item on" data-key="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>仪表盘</div>
+    <div class="nav-item" data-key="articles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v4h4"/><path d="M9.5 12.5h5M9.5 16h5"/></svg>文章管理</div>
+    <div class="nav-item" data-key="media"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="8.7" cy="9.7" r="1.5"/><path d="M20.5 15.5l-4.5-4.5-8.5 8.5"/></svg>媒体库</div>
+    <div class="nav-item" data-key="files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg>文件系统</div>
+    <div class="nav-item" data-key="links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.2 13.8a4.3 4.3 0 0 0 6.1 0l2.6-2.6a4.3 4.3 0 1 0-6.1-6.1l-1.2 1.2"/><path d="M13.8 10.2a4.3 4.3 0 0 0-6.1 0l-2.6 2.6a4.3 4.3 0 1 0 6.1 6.1l1.2-1.2"/></svg>友链管理</div>
+    <div class="nav-item" data-key="users"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.2" cy="8.2" r="3.2"/><path d="M3.8 19.5a5.4 5.4 0 0 1 10.8 0"/><path d="M15.5 17.5l1.9 1.9 3.6-4"/></svg>用户审核<span class="badge">3</span></div>
+    <div class="nav-item" data-key="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 20v-7M12 20V5.5M18.5 20v-4.5M3.5 20h17"/></svg>数据统计</div>
+    <div class="nav-item" data-key="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/><circle cx="9.5" cy="6.5" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="7.5" cy="17.5" r="2" fill="currentColor" stroke="none"/></svg>设置中心</div>
+    <div class="side-foot">
+      <div class="avatar">PB</div>
+      <div><b>pebleybrandler-cpu</b><span>站主 · 全部权限</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="crumb">控制台 / <b>概览</b></div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="text" placeholder="搜索文章、文件…（此处空格可正常输入）">
+      </div>
+      <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17s-2.5-1-2.5-7"/><path d="M10 19.5a2.2 2.2 0 0 0 4 0"/></svg><i></i></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span>今日访问</span><div class="val" data-count="1284">0</div><div class="delta">▲ 12.4% 较昨日</div></div>
+      <div class="stat"><span>文章总数</span><div class="val" data-count="86">0</div><div class="delta">▲ 本周 +3 篇</div></div>
+      <div class="stat"><span>媒体文件</span><div class="val" data-count="512">0</div><div class="delta down">▼ 回收站 12 个临时文件</div></div>
+      <div class="stat hot"><span>待审核用户</span><div class="val" data-count="3">0</div><div class="delta down">需要处理</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>近 30 天访问趋势 <em>单位 · PV</em></h3>
+        <svg viewBox="0 0 600 170" width="100%" style="display:block">
+          <defs>
+            <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#34d399" stop-opacity=".28"/>
+              <stop offset="1" stop-color="#34d399" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <g stroke="rgba(255,255,255,.06)"><line x1="0" y1="40" x2="600" y2="40"/><line x1="0" y1="85" x2="600" y2="85"/><line x1="0" y1="130" x2="600" y2="130"/></g>
+          <path fill="url(#area)" d="M0,128 L30,120 L60,124 L90,104 L120,110 L150,92 L180,98 L210,80 L240,88 L270,66 L300,74 L330,58 L360,64 L390,48 L420,56 L450,40 L480,52 L510,34 L540,44 L570,28 L600,36 L600,170 L0,170 Z"/>
+          <path fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" d="M0,128 L30,120 L60,124 L90,104 L120,110 L150,92 L180,98 L210,80 L240,88 L270,66 L300,74 L330,58 L360,64 L390,48 L420,56 L450,40 L480,52 L510,34 L540,44 L570,28 L600,36"/>
+          <circle cx="570" cy="28" r="4" fill="#34d399" stroke="#0a0e14" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="card">
+        <h3>待办 <em>今天</em></h3>
+        <div class="todo">
+          <div class="ico" style="background:rgba(251,113,133,.15);color:var(--rose)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9.2" cy="8.2" r="3.2"/><path d="M3.8 19.5a5.4 5.4 0 0 1 10.8 0"/><path d="M15.5 17.5l1.9 1.9 3.6-4"/></svg></div>
+          <div><b>用户审核</b><span>3 位新用户等待批准</span></div><div class="n" style="color:var(--rose)">3</div>
+        </div>
+        <div class="todo">
+          <div class="ico" style="background:rgba(251,191,36,.14);color:var(--amber)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 7l2 13h12l2-13M9 7a3 3 0 0 1 6 0"/></svg></div>
+          <div><b>回收站清理</b><span>12 个临时文件待确认</span></div><div class="n" style="color:var(--amber)">12</div>
+        </div>
+        <div class="todo">
+          <div class="ico" style="background:rgba(52,211,153,.14);color:var(--mint)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+          <div><b>数据库备份</b><span>今日 04:00 已完成</span></div><div class="n" style="color:var(--mint)">✓</div>
+        </div>
+        <div class="todo">
+          <div class="ico" style="background:rgba(125,211,252,.13);color:var(--sky)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v4h4"/></svg></div>
+          <div><b>草稿箱</b><span>「关于慢养育的记录」未发布</span></div><div class="n" style="color:var(--sky)">1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>最近文章 <em>共 86 篇</em></h3>
+      <table>
+        <tr><th>标题</th><th>分类</th><th>状态</th><th>更新时间</th></tr>
+        <tr><td class="t">《山月记》与自我怀疑</td><td class="muted">阅读与思考</td><td><span class="pill pub">已发布</span></td><td class="muted">2 小时前</td></tr>
+        <tr><td class="t">TypeScript 类型体操入门（二）</td><td class="muted">学习笔记</td><td><span class="pill pub">已发布</span></td><td class="muted">昨天</td></tr>
+        <tr><td class="t">关于「慢养育」的一些记录</td><td class="muted">我的家</td><td><span class="pill draft">草稿</span></td><td class="muted">3 天前</td></tr>
+        <tr><td class="t">前端直传 OSS 的签名方案</td><td class="muted">学习笔记</td><td><span class="pill pub">已发布</span></td><td class="muted">上周</td></tr>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="hint">
+  <span class="dot"></span>
+  按住 <kbd>Space</kbd> + <kbd>鼠标左键</kbd><span class="sep"></span>拖向目标扇区松手进入<span class="sep"></span>松在中心取消
+</div>
+
+<div class="overlay"></div>
+
+<div class="radial" id="radial">
+  <div class="ring"></div>
+  <svg id="rsvg" viewBox="0 0 440 440"></svg>
+  <div class="hub">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="5.6"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="ck" id="toastCk">✓</span><span id="toastMsg"></span></div>
+
+<script>
+/* ================= 径向玻璃导航 ================= */
+const ICONS = {
+  articles:'<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v4h4"/><path d="M9.5 12.5h5M9.5 16h5"/>',
+  media:'<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="8.7" cy="9.7" r="1.5"/><path d="M20.5 15.5l-4.5-4.5-8.5 8.5"/>',
+  files:'<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
+  links:'<path d="M10.2 13.8a4.3 4.3 0 0 0 6.1 0l2.6-2.6a4.3 4.3 0 1 0-6.1-6.1l-1.2 1.2"/><path d="M13.8 10.2a4.3 4.3 0 0 0-6.1 0l-2.6 2.6a4.3 4.3 0 1 0 6.1 6.1l1.2-1.2"/>',
+  users:'<circle cx="9.2" cy="8.2" r="3.2"/><path d="M3.8 19.5a5.4 5.4 0 0 1 10.8 0"/><path d="M15.5 17.5l1.9 1.9 3.6-4"/>',
+  stats:'<path d="M5.5 20v-7M12 20V5.5M18.5 20v-4.5M3.5 20h17"/>',
+  settings:'<path d="M4 6.5h16M4 12h16M4 17.5h16"/><circle cx="9.5" cy="6.5" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="7.5" cy="17.5" r="2" fill="currentColor" stroke="none"/>',
+  front:'<path d="M4 11l8-7 8 7"/><path d="M6 9.8V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9.8"/><path d="M10 21v-6h4v6"/>'
+};
+const ITEMS = [
+  {key:'articles',label:'文章管理'},
+  {key:'media',   label:'媒体库'},
+  {key:'files',   label:'文件系统'},
+  {key:'links',   label:'友链管理'},
+  {key:'users',   label:'用户审核'},
+  {key:'stats',   label:'数据统计'},
+  {key:'settings',label:'设置中心'},
+  {key:'front',   label:'回到前台'}
+];
+const N = ITEMS.length, STEP = 360 / N;
+const C = 220, R_OUT = 196, R_IN = 64, HUB_R = 34, DEAD = 34, GAP = 1.7;
+const BOX = 440, PAD = 228;
+
+const rad = d => d * Math.PI / 180;
+const pt = (r, deg) => [C + r * Math.cos(rad(deg)), C + r * Math.sin(rad(deg))];
+
+function sectorPath(r1, r2, a1, a2) {
+  const [x1,y1]=pt(r2,a1),[x2,y2]=pt(r2,a2),[x3,y3]=pt(r1,a2),[x4,y4]=pt(r1,a1);
+  return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r2} ${r2} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L${x3.toFixed(2)} ${y3.toFixed(2)} A${r1} ${r1} 0 0 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z`;
+}
+function arcPath(r, a1, a2) {
+  const [x1,y1]=pt(r,a1),[x2,y2]=pt(r,a2);
+  return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+}
+
+/* 构建 SVG */
+(function build() {
+  const svg = document.getElementById('rsvg');
+  let m = '';
+  m += '<g id="gSectors">';
+  ITEMS.forEach((it, i) => {
+    const c = -90 + i * STEP;
+    m += `<path class="sector" data-i="${i}" d="${sectorPath(R_IN, R_OUT, c - STEP/2 + GAP, c + STEP/2 - GAP)}"/>`;
+  });
+  m += '</g><g id="gRays">';
+  ITEMS.forEach((_, i) => {
+    const b = -90 + i * STEP + STEP/2;
+    const [x1,y1] = pt(HUB_R + 9, b), [x2,y2] = pt(R_OUT + 3, b);
+    m += `<line class="ray" x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}"/>`;
+  });
+  m += '</g><g id="gArcs">';
+  ITEMS.forEach((_, i) => {
+    const c = -90 + i * STEP;
+    m += `<path class="arc" data-i="${i}" d="${arcPath(R_OUT - 2, c - STEP/2 + GAP + 1.5, c + STEP/2 - GAP - 1.5)}"/>`;
+  });
+  m += '</g><g id="gItems">';
+  ITEMS.forEach((it, i) => {
+    const c = -90 + i * STEP;
+    const [ix,iy] = pt(112, c), [lx,ly] = pt(158, c);
+    m += `<g class="item" data-i="${i}" style="--i:${i}">`
+       + `<g class="ic" transform="translate(${(ix-12).toFixed(1)} ${(iy-12).toFixed(1)})"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[it.key]}</g></g>`
+       + `<text class="lbl" x="${lx.toFixed(1)}" y="${(ly+5).toFixed(1)}">${it.label}</text>`
+       + `</g>`;
+  });
+  m += '</g>';
+  svg.innerHTML = m;
+})();
+
+/* 交互状态 */
+const radial = document.getElementById('radial');
+const toast = document.getElementById('toast'), toastMsg = document.getElementById('toastMsg'), toastCk = document.getElementById('toastCk');
+let open = false, spaceHeld = false, anchor = {x: 0, y: 0}, activeIdx = -1;
+let lastEvt = null, raf = false, toastTimer = null;
+
+const isEditable = t => t.closest && t.closest('input,textarea,select,[contenteditable]');
+
+function setActive(i) {
+  if (i === activeIdx) return;
+  document.querySelectorAll('.sector.on,.item.on,.arc.on').forEach(el => el.classList.remove('on'));
+  if (i >= 0) {
+    document.querySelector(`.sector[data-i="${i}"]`)?.classList.add('on');
+    document.querySelector(`.item[data-i="${i}"]`)?.classList.add('on');
+    document.querySelector(`.arc[data-i="${i}"]`)?.classList.add('on');
+  }
+  activeIdx = i;
+}
+
+function updateActive() {
+  if (!open || !lastEvt) return;
+  const dx = lastEvt.clientX - anchor.x, dy = lastEvt.clientY - anchor.y;
+  if (Math.hypot(dx, dy) < DEAD) { setActive(-1); return; }
+  const rel = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+  setActive(Math.round(rel / STEP) % N);
+}
+
+function openMenu(x, y) {
+  anchor.x = x; anchor.y = y;
+  radial.style.left = (anchor.x - BOX/2) + 'px';
+  radial.style.top  = (anchor.y - BOX/2) + 'px';
+  open = true; lastEvt = null; setActive(-1);
+  document.body.classList.add('menu-open');
+}
+function closeMenu(action) {
+  if (!open) return;
+  const idx = activeIdx;
+  open = false; lastEvt = null; setActive(-1);
+  document.body.classList.remove('menu-open');
+  if (action && idx >= 0) navigate(ITEMS[idx]);
+  else showToast('已取消 · 回到原处', true);
+}
+function navigate(it) {
+  showToast(`进入「${it.label}」— 原型演示，路由未接入`);
+  const nav = document.querySelector(`.nav-item[data-key="${it.key}"]`);
+  if (nav) { nav.classList.remove('flash'); void nav.offsetWidth; nav.classList.add('flash'); }
+}
+function showToast(msg, cancel) {
+  toastMsg.textContent = msg;
+  toastCk.textContent = cancel ? '×' : '✓';
+  toast.classList.toggle('cancel', !!cancel);
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+/* 事件绑定 */
+window.addEventListener('keydown', e => {
+  if (isEditable(e.target)) return;
+  if (e.code === 'Space') { spaceHeld = true; e.preventDefault(); }
+  if (e.code === 'Escape' && open) closeMenu(false);
+});
+window.addEventListener('keyup', e => { if (e.code === 'Space') spaceHeld = false; });
+window.addEventListener('blur', () => { spaceHeld = false; if (open) closeMenu(false); });
+
+window.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || !spaceHeld || isEditable(e.target)) return;
+  e.preventDefault();
+  openMenu(e.clientX, e.clientY);
+});
+window.addEventListener('pointermove', e => {
+  if (!open) return;
+  lastEvt = e;
+  if (!raf) { raf = true; requestAnimationFrame(() => { raf = false; updateActive(); }); }
+});
+window.addEventListener('pointerup', e => {
+  if (!open) return;
+  lastEvt = e; updateActive();
+  const d = Math.hypot(e.clientX - anchor.x, e.clientY - anchor.y);
+  closeMenu(d >= DEAD);
+});
+window.addEventListener('pointercancel', () => closeMenu(false));
+
+/* 数字滚动 */
+document.querySelectorAll('.val[data-count]').forEach(el => {
+  const target = +el.dataset.count, t0 = performance.now(), dur = 900;
+  (function tick(t) {
+    const p = Math.min((t - t0) / dur, 1), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * e).toLocaleString();
+    if (p < 1) requestAnimationFrame(tick);
+  })(t0);
+});
+</script>
+</body>
+</html>

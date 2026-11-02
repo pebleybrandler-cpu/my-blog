@@ -65,6 +65,9 @@ docs/
 ├── requirements.md   需求清单（要做什么）
 ├── decisions.md      决策记录（为什么这么定）
 └── questions.md      待确认问题（还差什么）
+
+prototypes/          交互原型（自包含 HTML，可直接用浏览器打开体验）
+└── radial-menu/     后台「径向玻璃导航」原型（D-021 / B-12）
 ```
 
 新增目录时须在此处补充说明。
